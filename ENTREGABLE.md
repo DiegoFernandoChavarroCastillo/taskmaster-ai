@@ -5,14 +5,7 @@
 
 ## Arquitectura
 
-| Capa | Archivo | Responsabilidad |
-|---|---|---|
-| Cliente | `lib/supabase.ts` | Cliente único tipado con el esquema |
-| Genérico | `hooks/useRealtimeList.ts` | Fetch, estado `loading/error/data`, suscripción y limpieza |
-| Dominio | `hooks/useTasks.ts` (+ `useComments`, `useProjectMembers`) | Qué escuchar y mutaciones optimistas |
-| UI | `components/TaskBoard.tsx` | Solo renderiza; no importa Supabase |
-
-Entidades: tareas (`useTasks`), usuarios (`useProjectMembers`), comentarios (`useComments`). Las tres reutilizan el mismo hook genérico.
+`lib/supabase.ts` (cliente único tipado) → `hooks/useRealtimeList.ts` (genérico: fetch, estado, suscripción, limpieza) → `useTasks`, `useComments`, `useProjectMembers` (tareas, comentarios, usuarios) → `components/` (solo renderizan, no importan Supabase).
 
 ## 1. Custom Hook principal: `useTasks.ts`
 
@@ -45,20 +38,8 @@ export function useTasks(projectId: string): UseTasksResult {
     return { ok: true, data }
   }), [projectId, mutate, track])
 
-  const updateTask = useCallback((id: string, patch: TaskPatch) => track<Task>(async () => {
-    const previous = tasksRef.current.find((r) => r.id === id)                // snapshot
-    if (!previous) return { ok: false, error: 'La tarea ya no existe.' }
-    mutate((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)))
-    const { data, error } = await supabase.from('tasks').update(patch).eq('id', id).select().single()
-    if (error || !data) {
-      mutate((rows) => rows.map((r) => (r.id === id && r.updated_at === previous.updated_at ? previous : r)))
-      return { ok: false, error: translateError(error) }
-    }
-    mutate((rows) => rows.map((r) => (r.id === id ? data : r)))
-    return { ok: true, data }
-  }), [mutate, track])
-
-  // deleteTask: mismo patrón (quitar → delete().eq().select('id') → restaurar si falla)
+  // updateTask y deleteTask: mismo patrón → snapshot de la fila, cambio local,
+  // petición (.update/.delete + .select()) y restauración del snapshot si falla.
 
   return { tasks, status: list.status, error: mutationError ?? list.error,
     createTask, updateTask, deleteTask, isMutating: pending > 0, realtime: list.realtime }
