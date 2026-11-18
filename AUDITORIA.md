@@ -255,4 +255,4 @@ build: {
 | `grep -rn "supabase" src/components/` | Vacío |
 | `dist/index.html` | CSP presente, 0 scripts inline |
 | Guard de secretos | El build falla con `sb_secret_…` y con un JWT `service_role` |
-| Migración `0003_security_hardening.sql` | **PENDIENTE:** ejecutar en Supabase (SQL Editor) y volver a probar con dos usuarios (crear, mover, comentar, invitar) |
+| Migración `0003_security_hardening.sql` | Ejecutada en Supabase y app re-probada con dos usuarios (crear, mover, comentar, invitar) |
