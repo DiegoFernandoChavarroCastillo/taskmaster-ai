@@ -42,17 +42,18 @@ export function AuthPanel({ signIn, signUp }: AuthPanelProps) {
         {mode === 'signup' && (
           <>
             <label htmlFor="auth-name" className="text-sm font-medium">Nombre</label>
-            <input id="auth-name" required value={fullName} onChange={(e) => setFullName(e.target.value)} className={input} />
+            <input id="auth-name" required maxLength={100} autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className={input} />
           </>
         )}
         <label htmlFor="auth-email" className="text-sm font-medium">Correo</label>
-        <input id="auth-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={input} />
+        <input id="auth-email" type="email" required maxLength={254} autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={input} />
         <label htmlFor="auth-password" className="text-sm font-medium">Contraseña</label>
         <input
           id="auth-password"
           type="password"
           required
-          minLength={6}
+          minLength={mode === 'signup' ? 8 : undefined}
+          maxLength={72}
           autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}

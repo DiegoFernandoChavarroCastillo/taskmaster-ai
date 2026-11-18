@@ -186,23 +186,9 @@ export type Database = {
     Views: {
       [_ in never]: never
     }
+    // Las funciones de pertenencia viven en el esquema `private` (no expuesto
+    // por la Data API, ver 0003_security_hardening.sql): no aparecen aquí.
     Functions: {
-      is_project_member: {
-        Args: { p_project_id: string; p_user_id?: string }
-        Returns: boolean
-      }
-      is_project_owner: {
-        Args: { p_project_id: string }
-        Returns: boolean
-      }
-      can_access_task: {
-        Args: { p_task_id: string }
-        Returns: boolean
-      }
-      shares_project_with: {
-        Args: { p_user_id: string }
-        Returns: boolean
-      }
       add_project_member_by_email: {
         Args: { p_project_id: string; p_email: string }
         Returns: string

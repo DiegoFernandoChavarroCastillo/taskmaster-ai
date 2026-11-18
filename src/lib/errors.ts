@@ -52,6 +52,14 @@ export function translateError(error: unknown): string {
   if (/jwt|token/i.test(message)) {
     return 'Tu sesión ha caducado. Vuelve a iniciar sesión.'
   }
+  if (/password should|weak password|pwned|leaked/i.test(message)) {
+    return 'La contraseña no cumple los requisitos de seguridad (mínimo 8 caracteres y no filtrada).'
+  }
+  // Mensaje genérico a propósito: no confirma si un correo ya está registrado
+  // (evita la enumeración de cuentas desde el formulario de registro).
+  if (/already registered|already exists/i.test(message)) {
+    return 'No se pudo crear la cuenta con esos datos. Si ya tienes cuenta, inicia sesión.'
+  }
   if (/invalid login credentials/i.test(message)) {
     return 'Correo o contraseña incorrectos.'
   }
