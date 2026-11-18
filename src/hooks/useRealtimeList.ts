@@ -186,6 +186,7 @@ function freeTopic(base: string): string {
 /* -------------------------------------------------------------------------- */
 
 const INITIAL: ListState<never> = { status: 'idle', data: [], error: null }
+const LOADING: ListState<never> = { status: 'loading', data: [], error: null }
 const REFETCH_DEBOUNCE_MS = 150
 const FOCUS_REFETCH_MIN_INTERVAL_MS = 2_000
 
@@ -199,8 +200,19 @@ export function useRealtimeList<T extends Row>(options: RealtimeListOptions<T>):
   const filterColumn = filter?.column ?? null
   const filterValue = filter?.value ?? null
 
-  const [state, setState] = useState<ListState<T>>(INITIAL)
-  const [realtime, setRealtime] = useState<RealtimeStatus>('off')
+  const scopeKey = enabled ? `${table}|${filterColumn ?? ''}|${filterValue ?? ''}` : null
+  const [state, setState] = useState<ListState<T>>(() => (scopeKey === null ? INITIAL : LOADING))
+  const [realtime, setRealtime] = useState<RealtimeStatus>(scopeKey === null ? 'off' : 'connecting')
+
+  // CAMBIO DE ÁMBITO (p. ej. otro projectId): el estado se reinicia DURANTE
+  // el render (patrón recomendado por React frente a setState en un efecto),
+  // así no se pinta ni un frame con las filas del proyecto anterior.
+  const [currentScope, setCurrentScope] = useState(scopeKey)
+  if (currentScope !== scopeKey) {
+    setCurrentScope(scopeKey)
+    setState(scopeKey === null ? INITIAL : LOADING)
+    setRealtime(scopeKey === null ? 'off' : 'connecting')
+  }
 
   // Las opciones (query, sort, isNewer) suelen ser closures nuevas en cada
   // render. Se guardan en una ref para leer siempre la última versión sin
@@ -275,12 +287,12 @@ export function useRealtimeList<T extends Row>(options: RealtimeListOptions<T>):
   /* ---------------------------- Fetch inicial ---------------------------- */
   // Se repite cuando cambia el ámbito (tabla / filtro).
   useEffect(() => {
-    if (!enabled) {
-      setState(INITIAL)
-      return
-    }
-    // Ámbito nuevo: se vacía la lista para no mostrar datos del proyecto anterior.
-    setState({ status: 'loading', data: [], error: null })
+    if (!enabled) return
+    // El estado ya se puso en 'loading' al detectar el ámbito nuevo; la
+    // petición es "silenciosa" para no repetir esa transición.
+    // Falso positivo del linter: con silent=true load() solo hace setState
+    // DESPUÉS del await (sincronización con un sistema externo).
+    // oxlint-disable-next-line react/set-state-in-effect
     void load({ silent: true })
     return () => {
       abortRef.current?.abort()
@@ -290,10 +302,7 @@ export function useRealtimeList<T extends Row>(options: RealtimeListOptions<T>):
 
   /* ----------------------------- Suscripción ----------------------------- */
   useEffect(() => {
-    if (!enabled) {
-      setRealtime('off')
-      return
-    }
+    if (!enabled) return
 
     const baseTopic = filterValue === null ? table : `${table}:${filterValue}`
 
@@ -317,8 +326,11 @@ export function useRealtimeList<T extends Row>(options: RealtimeListOptions<T>):
       channelRef.current = null
     }
 
-    setRealtime('connecting')
     let hasConnected = false
+    // Un canal que ya no es el vigente (proyecto anterior cerrándose, o
+    // componente desmontado) puede recibir aún algún evento en vuelo mientras
+    // removeChannel termina: se ignora para no mezclar datos entre ámbitos.
+    const isCurrent = (): boolean => channelRef.current?.channel === channel
 
     // PROBLEMA 2 · CIERRES OBSOLETOS
     // Este handler se registra UNA sola vez por canal; si leyera `state`
@@ -326,6 +338,7 @@ export function useRealtimeList<T extends Row>(options: RealtimeListOptions<T>):
     // nunca lee estado: delega en setState FUNCIONAL, que recibe la lista
     // vigente, y lee opciones desde optionsRef (siempre la última versión).
     const handleChange = (payload: RealtimePostgresChangesPayload<T>): void => {
+      if (!isCurrent()) return
       const { strategy = 'patch', isNewer, sort } = optionsRef.current
       if (strategy === 'refetch') {
         if (refetchTimerRef.current !== null) clearTimeout(refetchTimerRef.current)
@@ -366,6 +379,7 @@ export function useRealtimeList<T extends Row>(options: RealtimeListOptions<T>):
     }
 
     channel.subscribe((status) => {
+      if (!isCurrent()) return
       if (status === 'SUBSCRIBED') {
         setRealtime('live')
         // PROBLEMA 4 · RECONEXIÓN

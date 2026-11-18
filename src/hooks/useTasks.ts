@@ -76,7 +76,9 @@ export function useTasks(projectId: string): UseTasksResult {
   const { data: tasks, mutate, refetch } = list
 
   const [pendingCount, setPendingCount] = useState(0)
-  const [mutationError, setMutationError] = useState<string | null>(null)
+  // El error de una mutación pertenece al proyecto en el que ocurrió: se
+  // guarda etiquetado y se descarta al cambiar de proyecto (derivado en render).
+  const [mutationError, setMutationError] = useState<{ projectId: string; message: string } | null>(null)
 
   // Las mutaciones son asíncronas: al resolver deben leer la lista y el
   // proyecto ACTUALES, no los capturados por el closure cuando empezaron.
@@ -96,18 +98,14 @@ export function useTasks(projectId: string): UseTasksResult {
     }
   }, [])
 
-  // El error de una mutación pertenece al proyecto en el que ocurrió.
-  useEffect(() => {
-    setMutationError(null)
-  }, [projectId])
-
   /** Envuelve una mutación: contador isMutating + error traducido. */
   const track = useCallback(async <R,>(operation: () => Promise<MutationResult<R>>) => {
+    const scope = projectIdRef.current
     setPendingCount((count) => count + 1)
     setMutationError(null)
     try {
       const result = await operation()
-      if (!result.ok && isMountedRef.current) setMutationError(result.error)
+      if (!result.ok && isMountedRef.current) setMutationError({ projectId: scope, message: result.error })
       return result
     } finally {
       if (isMountedRef.current) setPendingCount((count) => count - 1)
@@ -277,7 +275,7 @@ export function useTasks(projectId: string): UseTasksResult {
   return {
     tasks,
     status: list.status,
-    error: mutationError ?? list.error,
+    error: (mutationError?.projectId === projectId ? mutationError.message : null) ?? list.error,
     createTask,
     updateTask,
     deleteTask,

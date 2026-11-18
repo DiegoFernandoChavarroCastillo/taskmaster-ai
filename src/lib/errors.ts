@@ -17,6 +17,7 @@ const BY_CODE: Readonly<Record<string, string>> = {
   '23514': 'Algún campo no cumple las reglas de validación (por ejemplo, un título vacío o demasiado largo).',
   '23502': 'Falta un campo obligatorio.',
   '22P02': 'Alguno de los valores enviados no tiene un formato válido.',
+  P0002: 'No existe ningún usuario registrado con ese correo.',
   // PostgREST
   PGRST116: 'El elemento ya no existe o no tienes permisos para modificarlo.',
   PGRST301: 'Tu sesión ha caducado. Vuelve a iniciar sesión.',

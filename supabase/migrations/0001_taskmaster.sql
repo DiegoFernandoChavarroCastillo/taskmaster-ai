@@ -216,6 +216,40 @@ as $$
   );
 $$;
 
+-- Invitación por correo: solo el dueño puede añadir miembros. Necesita
+-- SECURITY DEFINER para leer auth.users, que no es accesible desde el cliente.
+create or replace function public.add_project_member_by_email(p_project_id uuid, p_email text)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid;
+begin
+  if not public.is_project_owner(p_project_id) then
+    raise exception 'Solo el dueño del proyecto puede añadir miembros' using errcode = '42501';
+  end if;
+
+  select u.id into v_user_id
+  from auth.users u
+  where lower(u.email) = lower(btrim(p_email));
+
+  if v_user_id is null then
+    raise exception 'No existe ningún usuario con ese correo' using errcode = 'P0002';
+  end if;
+
+  insert into public.project_members (project_id, user_id)
+  values (p_project_id, v_user_id)
+  on conflict do nothing;
+
+  return v_user_id;
+end;
+$$;
+
+revoke execute on function public.add_project_member_by_email(uuid, text) from public, anon;
+grant  execute on function public.add_project_member_by_email(uuid, text) to authenticated;
+
 revoke execute on function public.is_project_member(uuid, uuid) from public, anon;
 revoke execute on function public.is_project_owner(uuid)         from public, anon;
 revoke execute on function public.can_access_task(uuid)          from public, anon;

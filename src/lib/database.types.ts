@@ -203,6 +203,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      add_project_member_by_email: {
+        Args: { p_project_id: string; p_email: string }
+        Returns: string
+      }
     }
     Enums: {
       task_status: 'pendiente' | 'en_progreso' | 'hecha'
