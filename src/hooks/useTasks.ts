@@ -3,7 +3,7 @@ import type { Task, TaskPriority, TaskStatus } from '../lib/database.types'
 import { translateError } from '../lib/errors'
 import { supabase } from '../lib/supabase'
 import { byCreatedAt, compareTimestamps } from '../lib/timestamps'
-import { upsertById, useRealtimeList, type ListStatus } from './useRealtimeList'
+import { upsertById, useRealtimeList, type ListStatus, type RealtimeStatus } from './useRealtimeList'
 
 /* -------------------------------------------------------------------------- */
 /* Tipos públicos                                                             */
@@ -30,6 +30,8 @@ export interface UseTasksResult {
   updateTask: (id: string, patch: TaskPatch) => Promise<MutationResult<Task>>
   deleteTask: (id: string) => Promise<MutationResult<{ id: string }>>
   isMutating: boolean
+  /** Estado del canal `tasks:${projectId}` (indicador "en vivo"). */
+  realtime: RealtimeStatus
   refetch: () => Promise<void>
 }
 
@@ -50,6 +52,13 @@ const isSameOrNewerTask = (incoming: Task, current: Task): boolean =>
 /* -------------------------------------------------------------------------- */
 
 export function useTasks(projectId: string): UseTasksResult {
+  // Toda la lógica de Realtime vive en el hook genérico (hooks/useRealtimeList.ts):
+  //  - canal `tasks:${projectId}` con postgres_changes filtrado por
+  //    `project_id=eq.${projectId}`, cerrado con removeChannel al desmontar o
+  //    cambiar de proyecto y protegido contra el doble montaje de StrictMode;
+  //  - deduplicación por id, handler sin cierres obsoletos (setState
+  //    funcional), orden por updated_at (isNewer) y refetch tras reconexión.
+  // Aquí solo se declara QUÉ se escucha y CÓMO se ordena.
   const list = useRealtimeList<Task>({
     table: 'tasks',
     filter: { column: 'project_id', value: projectId },
@@ -273,6 +282,7 @@ export function useTasks(projectId: string): UseTasksResult {
     updateTask,
     deleteTask,
     isMutating: pendingCount > 0,
+    realtime: list.realtime,
     refetch: refetchVisible,
   }
 }
