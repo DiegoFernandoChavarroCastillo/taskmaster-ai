@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import type { Member } from '../hooks/useProjectMembers'
 import type { TaskPatch } from '../hooks/useTasks'
 import { TASK_PRIORITIES, TASK_STATUSES, type Task, type TaskPriority } from '../lib/database.types'
-import { CommentThread } from './CommentThread'
 import { PRIORITY_LABEL, STATUS_LABEL } from './labels'
+
+// Los comentarios solo se descargan cuando el usuario abre un hilo.
+const CommentThread = lazy(() => import('./CommentThread').then((m) => ({ default: m.CommentThread })))
 
 const PRIORITY_STYLE: Record<TaskPriority, string> = {
   baja: 'bg-slate-100 text-slate-700',
@@ -104,7 +106,11 @@ export function TaskCard({ task, members, disabled, onUpdate, onDelete }: TaskCa
         </button>
       </div>
 
-      {showComments && <CommentThread taskId={task.id} members={members} />}
+      {showComments && (
+        <Suspense fallback={<div className="h-8 animate-pulse rounded bg-slate-100" aria-label="Cargando comentarios" />}>
+          <CommentThread taskId={task.id} members={members} />
+        </Suspense>
+      )}
     </article>
   )
 }

@@ -1,1 +1,4 @@
 @import "tailwindcss";
+
+/* Los informes del bundle (docs/*.html) no son UI: no deben generar clases. */
+@source not "../docs";
