@@ -1,32 +1,51 @@
-# React + TypeScript + Vite
+# TaskMaster AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Plataforma de gestión de proyectos colaborativos con tareas en tiempo real.
+React 18 · TypeScript estricto · Vite · Tailwind CSS v4 · Supabase.
 
-Currently, two official plugins are available:
+La entrega académica (código de `useTasks`, memoria técnica y rúbrica) está en [`ENTREGA.md`](./ENTREGA.md).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Puesta en marcha
 
-## React Compiler
+1. **Crear el proyecto en Supabase** (https://supabase.com/dashboard).
+2. **Aplicar el esquema**: en *SQL Editor*, pega y ejecuta `supabase/migrations/0001_taskmaster.sql`
+   (o `npx supabase db push` si usas la CLI enlazada al proyecto).
+3. **Variables de entorno**:
+   ```bash
+   cp .env.example .env.local
+   # rellena VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (Project Settings → API)
+   ```
+   `.env.local` está en `.gitignore` y nunca se versiona.
+4. **Auth**: para pruebas rápidas, en *Authentication → Providers → Email* puedes desactivar
+   *Confirm email*; si no, cada cuenta debe confirmarse por correo antes de entrar.
+5. **Ejecutar**:
+   ```bash
+   npm install
+   npm run dev
+   ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Probar el tiempo real
 
-## Expanding the Oxlint configuration
+1. Registra dos cuentas (A y B), cada una en un navegador o perfil distinto.
+2. Con A, crea un proyecto y pulsa **Invitar** con el correo de B.
+3. B verá el proyecto aparecer solo. Crear, mover o borrar tareas en una ventana se refleja
+   en la otra sin recargar; el indicador "En vivo" muestra el estado del canal.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Scripts
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+| Comando | Qué hace |
+|---|---|
+| `npm run dev` | Servidor de desarrollo (StrictMode activo) |
+| `npm run build` | `tsc -b` + build de producción |
+| `npm run lint` | oxlint |
+| `npm test` | Tests de Vitest del contrato de Realtime y ciclo de vida (cliente simulado) |
+
+## Estructura
+
 ```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+supabase/migrations/0001_taskmaster.sql   esquema, índices, RLS, Realtime
+src/lib/        cliente único tipado, tipos del esquema, errores en español, timestamps
+src/hooks/      useRealtimeList (genérico) + useTasks, useComments, useProjectMembers,
+                useProjects, useAuth (únicos puntos que hablan con el backend)
+src/components/ TaskBoard, TaskCard, CommentThread, MembersBar, Workspace, AuthPanel
+```
